@@ -40,6 +40,14 @@ export default function Sidebar() {
 
                 </Link>
 
+                <Link href="/dashboard/patient" className={`h-12 w-12 rounded-xl flex items-center justify-center transition flex-col ${pathname.startsWith("/dashboard/patient")
+                    ? "text-blue-600" : "text-gray-400 "
+                    }`}>
+
+                    <LayoutDashboard size={24} />
+                    <p className="text-xs mt-1"> Patients</p>
+
+                </Link>
 
             </nav>
         </aside>
