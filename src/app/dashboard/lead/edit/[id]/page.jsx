@@ -9,6 +9,8 @@ import {
     Phone,
     Mail,
     MapPin,
+    X,
+    Plus,
 } from "lucide-react";
 
 import DashboardLayout from "@/app/dashboard/DashboardLayout";
@@ -188,6 +190,12 @@ export default function EditLeadPage() {
                             {formData.full_name || "Unnamed Lead"}
 
                         </h1>
+
+                        <div className="mt-4">
+
+                            <LeadTags leadId={params.id} />
+
+                        </div>
 
                         <div className="flex items-center gap-3 mt-3 flex-wrap">
 
@@ -588,6 +596,204 @@ function EditableField({
                 <div className="min-h-[44px] flex items-center px-1 text-black font-medium">
 
                     {value || "-"}
+
+                </div>
+
+            )}
+
+        </div>
+    );
+}
+
+/* TAG COMPONENT */
+function LeadTags({ leadId }) {
+
+    const [tags, setTags] = useState([]);
+
+    const [selectedTags, setSelectedTags] = useState([]);
+
+    const [showDropdown, setShowDropdown] = useState(false);
+
+    useEffect(() => {
+
+        fetchTags();
+
+        fetchLeadTags();
+
+    }, []);
+
+    async function fetchTags() {
+        console.log("Fetching all tags...");
+        const { data, error } = await supabase
+            .from("tags")
+            .select("*");
+
+        if (error) {
+            console.error("Error fetching tags:", error);
+            return;
+        }
+
+        console.log("Tags fetched:", data);
+        if (data) {
+            setTags(data);
+        }
+    }
+
+    async function fetchLeadTags() {
+        console.log("Fetching tags for lead:", leadId);
+        const { data, error } = await supabase
+            .from("lead_tags")
+            .select(`
+                tag_id,
+                tags (
+                    id,
+                    name,
+                    color
+                )
+            `)
+            .eq("lead_id", leadId);
+
+        if (error) {
+            console.error("Error fetching lead tags:", error);
+            return;
+        }
+
+        console.log("Lead tags fetched:", data);
+        if (data) {
+            const formatted = data
+                .filter(item => item.tags) // Ensure tags exist
+                .map((item) => item.tags);
+            setSelectedTags(formatted);
+        }
+    }
+
+    async function addTag(tag) {
+
+        const alreadyExists = selectedTags.find(
+            (t) => t.id === tag.id
+        );
+
+        if (alreadyExists) return;
+
+        const { error } = await supabase
+            .from("lead_tags")
+            .insert({
+                lead_id: leadId,
+                tag_id: tag.id,
+            });
+
+        if (!error) {
+
+            setSelectedTags([...selectedTags, tag]);
+        }
+    }
+
+    async function removeTag(tagId) {
+
+        await supabase
+            .from("lead_tags")
+            .delete()
+            .eq("lead_id", leadId)
+            .eq("tag_id", tagId);
+
+        setSelectedTags(
+            selectedTags.filter((tag) => tag.id !== tagId)
+        );
+    }
+
+    return (
+
+        <div className="relative">
+
+            <div className="flex items-center gap-2 flex-wrap">
+
+                {selectedTags.map((tag) => (
+
+                    <div
+                        key={tag.id}
+                        className="flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium text-white"
+                        style={{
+                            backgroundColor: tag.color || "#2563eb",
+                        }}
+                    >
+
+                        {tag.name}
+
+                        <button
+                            onClick={() => removeTag(tag.id)}
+                            className="hover:opacity-70"
+                        >
+
+                            <X size={14} />
+
+                        </button>
+
+                    </div>
+
+                ))}
+
+                <button
+                    onClick={() => setShowDropdown(!showDropdown)}
+                    className="h-8 px-3 rounded-full border border-dashed border-gray-300 text-sm flex items-center gap-1 hover:border-blue-500 hover:text-blue-600"
+                >
+
+                    <Plus size={14} />
+
+                    Add Tag
+
+                </button>
+
+            </div>
+
+            {showDropdown && (
+
+                <div className="absolute z-50 mt-3 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl p-2">
+
+                    <div className="max-h-60 overflow-y-auto">
+
+                        {tags.map((tag) => {
+
+                            const active = selectedTags.find(
+                                (t) => t.id === tag.id
+                            );
+
+                            return (
+
+                                <button
+                                    key={tag.id}
+                                    disabled={active}
+                                    onClick={() => addTag(tag)}
+                                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm transition
+                                    
+                                    ${active
+                                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                            : "hover:bg-gray-50 text-black"
+                                        }
+                                    
+                                    `}
+                                >
+
+                                    <div className="flex items-center gap-2">
+
+                                        <div
+                                            className="w-3 h-3 rounded-full"
+                                            style={{
+                                                backgroundColor:
+                                                    tag.color || "#2563eb",
+                                            }}
+                                        />
+
+                                        {tag.name}
+
+                                    </div>
+
+                                    {active && "Added"}
+
+                                </button>
+                            );
+                        })}
+
+                    </div>
 
                 </div>
 
