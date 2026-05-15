@@ -11,6 +11,9 @@ import {
     MapPin,
     X,
     Plus,
+    Search,
+    Check,
+    Tag as TagIcon,
 } from "lucide-react";
 
 import DashboardLayout from "@/app/dashboard/DashboardLayout";
@@ -613,17 +616,20 @@ function LeadTags({ leadId }) {
     const [selectedTags, setSelectedTags] = useState([]);
 
     const [showDropdown, setShowDropdown] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [newTagName, setNewTagName] = useState("");
+    const [searchTerm, setSearchTerm] = useState("");
+    const [isCreating, setIsCreating] = useState(false);
 
     useEffect(() => {
-
-        fetchTags();
-
-        fetchLeadTags();
-
-    }, []);
+        if (leadId) {
+            Promise.all([fetchTags(), fetchLeadTags()]).finally(() => {
+                setIsLoading(false);
+            });
+        }
+    }, [leadId]);
 
     async function fetchTags() {
-        console.log("Fetching all tags...");
         const { data, error } = await supabase
             .from("tags")
             .select("*");
@@ -633,14 +639,17 @@ function LeadTags({ leadId }) {
             return;
         }
 
-        console.log("Tags fetched:", data);
+        console.log("DEBUG: tags table query result:", data);
+        if (data && data.length === 0) {
+            console.warn("DEBUG: tags table is empty or RLS is blocking SELECT.");
+        }
+        
         if (data) {
             setTags(data);
         }
     }
 
     async function fetchLeadTags() {
-        console.log("Fetching tags for lead:", leadId);
         const { data, error } = await supabase
             .from("lead_tags")
             .select(`
@@ -689,16 +698,63 @@ function LeadTags({ leadId }) {
     }
 
     async function removeTag(tagId) {
+        try {
+            const { error } = await supabase
+                .from("lead_tags")
+                .delete()
+                .eq("lead_id", leadId)
+                .eq("tag_id", tagId);
 
-        await supabase
-            .from("lead_tags")
-            .delete()
-            .eq("lead_id", leadId)
-            .eq("tag_id", tagId);
+            if (error) throw error;
 
-        setSelectedTags(
-            selectedTags.filter((tag) => tag.id !== tagId)
-        );
+            setSelectedTags(
+                selectedTags.filter((tag) => tag.id !== tagId)
+            );
+        } catch (error) {
+            console.error("Error removing tag:", error);
+        }
+    }
+
+    async function createAndAddTag() {
+        if (!newTagName.trim()) return;
+
+        try {
+            setIsCreating(true);
+
+            // 1. Create the tag
+            const { data: tagData, error: tagError } = await supabase
+                .from("tags")
+                .insert({
+                    name: newTagName.trim(),
+                    color: "#3b82f6", // Default blue
+                })
+                .select()
+                .single();
+
+            if (tagError) throw tagError;
+
+            // 2. Refresh all tags list
+            setTags([...tags, tagData]);
+
+            // 3. Add tag to lead
+            const { error: linkError } = await supabase
+                .from("lead_tags")
+                .insert({
+                    lead_id: leadId,
+                    tag_id: tagData.id,
+                });
+
+            if (linkError) throw linkError;
+
+            // 4. Update selected tags
+            setSelectedTags([...selectedTags, tagData]);
+            setNewTagName("");
+        } catch (error) {
+            console.error("Error creating tag:", error);
+            alert("Error creating tag: " + error.message);
+        } finally {
+            setIsCreating(false);
+        }
     }
 
     return (
@@ -746,57 +802,99 @@ function LeadTags({ leadId }) {
             </div>
 
             {showDropdown && (
-
-                <div className="absolute z-50 mt-3 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl p-2">
-
-                    <div className="max-h-60 overflow-y-auto">
-
-                        {tags.map((tag) => {
-
-                            const active = selectedTags.find(
-                                (t) => t.id === tag.id
-                            );
-
-                            return (
-
+                <div className="absolute z-50 mt-3 w-72 bg-white border border-gray-200 rounded-2xl shadow-2xl p-0 overflow-hidden animate-in fade-in zoom-in duration-200">
+                    {/* Search & Create Header */}
+                    <div className="p-3 border-b bg-gray-50/50">
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search or create tag..."
+                                    value={searchTerm}
+                                    onChange={(e) => {
+                                        setSearchTerm(e.target.value);
+                                        setNewTagName(e.target.value);
+                                    }}
+                                    className="w-full text-sm border border-gray-200 rounded-xl pl-8 pr-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
+                                />
+                            </div>
+                            {searchTerm && !tags.find(t => t.name.toLowerCase() === searchTerm.toLowerCase()) && (
                                 <button
-                                    key={tag.id}
-                                    disabled={active}
-                                    onClick={() => addTag(tag)}
-                                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm transition
-                                    
-                                    ${active
-                                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                            : "hover:bg-gray-50 text-black"
-                                        }
-                                    
-                                    `}
+                                    onClick={createAndAddTag}
+                                    disabled={isCreating}
+                                    className="px-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-1"
                                 >
-
-                                    <div className="flex items-center gap-2">
-
-                                        <div
-                                            className="w-3 h-3 rounded-full"
-                                            style={{
-                                                backgroundColor:
-                                                    tag.color || "#2563eb",
-                                            }}
-                                        />
-
-                                        {tag.name}
-
-                                    </div>
-
-                                    {active && "Added"}
-
+                                    <Plus size={16} />
+                                    <span className="text-xs font-medium">Create</span>
                                 </button>
-                            );
-                        })}
-
+                            )}
+                        </div>
                     </div>
 
-                </div>
+                    {/* Tags List */}
+                    <div className="max-h-64 overflow-y-auto">
+                        {isLoading ? (
+                            <div className="p-8 text-center">
+                                <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-2" />
+                                <p className="text-xs text-gray-500 font-medium">Fetching tags...</p>
+                            </div>
+                        ) : tags.length === 0 ? (
+                            <div className="p-8 text-center">
+                                <div className="bg-gray-100 w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <TagIcon size={20} className="text-gray-400" />
+                                </div>
+                                <p className="text-sm text-gray-900 font-semibold mb-1">No tags found</p>
+                                <p className="text-xs text-gray-500 px-4">Create your first tag by typing above.</p>
+                            </div>
+                        ) : (
+                            <div className="p-1">
+                                {tags
+                                    .filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                                    .map((tag) => {
+                                        const isSelected = selectedTags.find(
+                                            (t) => t.id === tag.id
+                                        );
 
+                                        return (
+                                            <button
+                                                key={tag.id}
+                                                onClick={() => isSelected ? removeTag(tag.id) : addTag(tag)}
+                                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition group
+                                                    ${isSelected 
+                                                        ? "bg-blue-50 text-blue-700" 
+                                                        : "hover:bg-gray-50 text-gray-700"
+                                                    }
+                                                `}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div
+                                                        className="w-2.5 h-2.5 rounded-full ring-2 ring-white"
+                                                        style={{
+                                                            backgroundColor: tag.color || "#2563eb",
+                                                        }}
+                                                    />
+                                                    <span className="font-medium">{tag.name}</span>
+                                                </div>
+                                                {isSelected ? (
+                                                    <Check size={16} className="text-blue-600" />
+                                                ) : (
+                                                    <Plus size={16} className="text-gray-300 opacity-0 group-hover:opacity-100 transition" />
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* Footer Info */}
+                    <div className="p-3 bg-gray-50 border-t">
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">
+                            {tags.length} Total Tags Available
+                        </p>
+                    </div>
+                </div>
             )}
 
         </div>

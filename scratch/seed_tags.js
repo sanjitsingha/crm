@@ -4,7 +4,14 @@ const { createClient } = require("@supabase/supabase-js");
 const supabaseUrl = "https://hxvjtufmcrtozyfrsovo.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4dmp0dWZtY3J0b3p5ZnJzb3ZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NjQwODEsImV4cCI6MjA5NDI0MDA4MX0.MyCRmvA-newc2JqWfKnjPUoa7ASebnpvTYFaAsLtMYk";
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+        persistSession: false
+    },
+    realtime: {
+        enabled: false
+    }
+});
 
 const defaultTags = [
     { name: "Hot Lead", color: "#ef4444" },
