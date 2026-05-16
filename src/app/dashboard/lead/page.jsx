@@ -30,6 +30,7 @@ export default function lead() {
         "phone_number",
         "interested_department",
         "lead_status",
+        "tags",
         "preferred_visit_date",
     ]);
 
@@ -65,7 +66,7 @@ export default function lead() {
 
             const { data, error } = await supabase
                 .from("leads")
-                .select("*")
+                .select("*, lead_tags(tags(id, name, color))")
                 .order("created_at", { ascending: false });
 
             if (error) {
@@ -73,7 +74,13 @@ export default function lead() {
                 return;
             }
 
-            setLeads(data || []);
+            // Flatten lead_tags into a simple tags array
+            const formattedLeads = (data || []).map(lead => ({
+                ...lead,
+                tags: lead.lead_tags?.map(lt => lt.tags).filter(Boolean) || []
+            }));
+
+            setLeads(formattedLeads);
 
         } catch (error) {
 
@@ -94,7 +101,8 @@ export default function lead() {
             (key) =>
                 key !== "id" &&
                 key !== "created_at" &&
-                key !== "updated_at"
+                key !== "updated_at" &&
+                key !== "lead_tags" // Exclude the raw junction table data
         );
 
     }, [leads]);
@@ -112,11 +120,16 @@ export default function lead() {
     }
 
     const filteredLeads = leads.filter((lead) =>
-        Object.values(lead).some((value) =>
-            String(value || "")
+        Object.entries(lead).some(([key, value]) => {
+            if (key === "tags" && Array.isArray(value)) {
+                return value.some(tag =>
+                    tag.name.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+            }
+            return String(value || "")
                 .toLowerCase()
-                .includes(searchTerm.toLowerCase())
-        )
+                .includes(searchTerm.toLowerCase());
+        })
     );
 
     function formatHeading(text) {
@@ -127,6 +140,27 @@ export default function lead() {
     }
 
     function renderCell(column, value) {
+
+        // Tags Badge
+        if (column === "tags") {
+            return (
+                <div className="flex flex-wrap gap-1">
+                    {value && value.length > 0 ? (
+                        value.map((tag) => (
+                            <span
+                                key={tag.id}
+                                className="px-2 py-0.5 rounded-full text-[10px] font-medium text-white whitespace-nowrap"
+                                style={{ backgroundColor: tag.color || "#3b82f6" }}
+                            >
+                                {tag.name}
+                            </span>
+                        ))
+                    ) : (
+                        <span className="text-gray-400">-</span>
+                    )}
+                </div>
+            );
+        }
 
         // Status Badge
         if (column === "lead_status") {
