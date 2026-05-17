@@ -10,6 +10,7 @@ import {
     Search,
     Plus,
     Settings2,
+    FunnelPlus
 } from "lucide-react";
 
 export default function lead() {
@@ -210,19 +211,19 @@ export default function lead() {
 
                 <Link
                     href="/dashboard/lead/add"
-                    className="h-11 px-5 rounded-xl bg-blue-600 text-white flex items-center gap-2 hover:bg-blue-700 transition"
+                    className="h-11 px-3  bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-sm text-white flex items-center gap-2 hover:bg-blue-700 transition"
                 >
 
                     <Plus size={18} />
 
-                    Add Lead
+                    <p className="text-sm border-l border-blue-800 pl-3">  Add Lead</p>
 
                 </Link>
 
             </div>
 
             {/* Filters */}
-            <div className="bg-white border rounded-2xl p-4 mb-6">
+            <div className="bg-white border py-2 px-4 mb-1">
 
                 <div className="flex items-center justify-between gap-4 flex-wrap">
 
@@ -234,7 +235,7 @@ export default function lead() {
 
                             <Search
                                 size={18}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-black"
                             />
 
                             <input
@@ -244,7 +245,7 @@ export default function lead() {
                                 onChange={(e) =>
                                     setSearchTerm(e.target.value)
                                 }
-                                className="h-11 w-72 rounded-xl border border-gray-200 pl-10 pr-4 outline-none focus:border-blue-500"
+                                className="h-11 w-72   text-black text-sm border-b border-gray-200  pl-10 pr-4 outline-none focus:border-blue-500"
                             />
 
                         </div>
@@ -258,10 +259,10 @@ export default function lead() {
                             onClick={() =>
                                 setShowColumnDropdown(!showColumnDropdown)
                             }
-                            className="h-11 w-11 rounded-xl border flex items-center justify-center hover:bg-gray-100"
+                            className="h-11 w-11 border-l border-gray-300 text-black  flex items-center justify-center "
                         >
 
-                            <Settings2 size={18} />
+                            <FunnelPlus size={18} />
 
                         </button>
 
@@ -279,7 +280,7 @@ export default function lead() {
 
                                         <label
                                             key={column}
-                                            className="flex items-center gap-3 text-sm cursor-pointer"
+                                            className="flex items-center text-black gap-3 text-sm cursor-pointer"
                                         >
 
                                             <input
@@ -309,7 +310,7 @@ export default function lead() {
             </div>
 
             {/* Table */}
-            <div className="bg-white border rounded-2xl overflow-hidden">
+            <div className="bg-white border overflow-hidden">
 
                 <div className="overflow-x-auto">
 

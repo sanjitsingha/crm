@@ -1,6 +1,6 @@
 'use client'
 
-import { LayoutDashboard } from "lucide-react";
+import { LayoutDashboard, Users, User } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
@@ -35,7 +35,7 @@ export default function Sidebar() {
                     ? "text-blue-600" : "text-gray-400 "
                     }`}>
 
-                    <LayoutDashboard size={24} />
+                    <Users size={24} />
                     <p className="text-xs mt-1"> Leads</p>
 
                 </Link>
@@ -44,7 +44,7 @@ export default function Sidebar() {
                     ? "text-blue-600" : "text-gray-400 "
                     }`}>
 
-                    <LayoutDashboard size={24} />
+                    <User size={24} />
                     <p className="text-xs mt-1"> Patients</p>
 
                 </Link>

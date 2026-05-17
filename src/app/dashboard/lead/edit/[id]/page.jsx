@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
     Pencil,
     Save,
@@ -14,6 +14,7 @@ import {
     Search,
     Check,
     Tag as TagIcon,
+    Users,
 } from "lucide-react";
 
 import DashboardLayout from "@/app/dashboard/DashboardLayout";
@@ -29,6 +30,20 @@ export default function EditLeadPage() {
     const [editingField, setEditingField] = useState(null);
 
     const [saving, setSaving] = useState(false);
+
+    const [followUps, setFollowUps] = useState([]);
+
+    const [savingFollowUp, setSavingFollowUp] = useState(false);
+    const [showConvertModal, setShowConvertModal] = useState(false);
+    const [converting, setConverting] = useState(false);
+    const router = useRouter();
+
+    const [followUpForm, setFollowUpForm] = useState({
+        call_status: "Connected",
+        lead_response: "Interested",
+        next_follow_up: "",
+        notes: "",
+    });
 
     const [formData, setFormData] = useState({
         full_name: "",
@@ -54,6 +69,68 @@ export default function EditLeadPage() {
         fetchLead();
     }, []);
 
+
+    async function fetchFollowUps(leadId) {
+
+        const { data, error } = await supabase
+            .from("follow_up_calls")
+            .select("*")
+            .eq("lead_id", leadId)
+            .order("created_at", { ascending: false });
+
+        if (error) {
+            console.log(error);
+            return;
+        }
+
+        setFollowUps(data || []);
+    }
+
+    async function saveFollowUp() {
+
+        try {
+
+            setSavingFollowUp(true);
+
+            const { error } = await supabase
+                .from("follow_up_calls")
+                .insert([
+                    {
+                        lead_id: params.id,
+                        call_status: followUpForm.call_status,
+                        lead_response: followUpForm.lead_response,
+                        next_follow_up:
+                            followUpForm.next_follow_up || null,
+                        notes: followUpForm.notes,
+                    },
+                ]);
+
+            if (error) {
+                console.log(error);
+                alert(error.message);
+                return;
+            }
+
+            setFollowUpForm({
+                call_status: "Connected",
+                lead_response: "Interested",
+                next_follow_up: "",
+                notes: "",
+            });
+
+            await fetchFollowUps(params.id);
+
+        } catch (error) {
+
+            console.log(error);
+
+        } finally {
+
+            setSavingFollowUp(false);
+        }
+    }
+
+
     async function fetchLead() {
 
         const { data, error } = await supabase
@@ -68,6 +145,8 @@ export default function EditLeadPage() {
         }
 
         setFormData(data);
+
+        await fetchFollowUps(data.id);
 
         setLoading(false);
     }
@@ -147,6 +226,51 @@ export default function EditLeadPage() {
         } finally {
 
             setSaving(false);
+        }
+    }
+
+    async function handleConvert() {
+        try {
+            setConverting(true);
+
+            // 1. Insert into patients table
+            const { error: patientError } = await supabase
+                .from("patients")
+                .insert([{
+                    full_name: formData.full_name,
+                    email: formData.email,
+                    phone_number: formData.phone_number,
+                    department: formData.interested_department,
+                    patient_status: "Active",
+                    first_visit_date: formData.preferred_visit_date,
+                }]);
+
+            if (patientError) {
+                console.error(patientError);
+                alert("Error creating patient: " + patientError.message);
+                return;
+            }
+
+            // 2. Update lead status to Converted
+            const { error: leadError } = await supabase
+                .from("leads")
+                .update({ lead_status: "Converted" })
+                .eq("id", params.id);
+
+            if (leadError) {
+                console.error(leadError);
+                alert("Error updating lead status: " + leadError.message);
+                return;
+            }
+
+            alert("Lead converted to patient successfully!");
+            router.push("/dashboard/patient");
+
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setConverting(false);
+            setShowConvertModal(false);
         }
     }
 
@@ -254,6 +378,13 @@ export default function EditLeadPage() {
 
                     </div>
 
+                    <button
+                        onClick={() => setShowConvertModal(true)}
+                        className="h-11 px-5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition"
+                    >
+                        <Users size={18} />
+                        Convert to Patient
+                    </button>
                     <button
                         onClick={handleSubmit}
                         disabled={saving}
@@ -479,8 +610,331 @@ export default function EditLeadPage() {
                     </div>
 
                 </div>
+                {/* FOLLOW UP CALLS */}
+                {/* FOLLOW UP CALLS */}
+                <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+
+                    {/* HEADER */}
+                    <div className="p-6 border-b flex items-center justify-between">
+
+                        <div>
+
+                            <h2 className="text-lg font-semibold text-black">
+
+                                Follow Up Calls
+
+                            </h2>
+
+                            <p className="text-sm text-gray-500 mt-1">
+
+                                Track all follow up communication history
+
+                            </p>
+
+                        </div>
+
+                        <div className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">
+
+                            {followUps.length} Records
+
+                        </div>
+
+                    </div>
+
+                    {/* TABLE */}
+                    <div className="overflow-x-auto">
+
+                        <table className="w-full min-w-[1100px]">
+
+                            <thead className="bg-gray-50 border-b border-gray-200">
+
+                                <tr>
+
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                        Date
+                                    </th>
+
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                        Current Status
+                                    </th>
+
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[350px]">
+                                        Notes
+                                    </th>
+
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                        Next Follow Up
+                                    </th>
+
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                        Call Status
+                                    </th>
+
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                        Action
+                                    </th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody>
+
+                                {/* EXISTING ROWS */}
+                                {followUps.map((item) => (
+
+                                    <tr
+                                        key={item.id}
+                                        className="border-b border-gray-100 hover:bg-gray-50 transition"
+                                    >
+
+                                        {/* DATE */}
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+
+                                            {new Date(item.call_date).toLocaleDateString()}
+
+                                        </td>
+
+                                        {/* CURRENT STATUS */}
+                                        <td className="px-6 py-4 whitespace-nowrap">
+
+                                            <span
+                                                className={`px-3 py-1 rounded-full text-xs font-semibold
+                                    ${item.lead_response === "Interested"
+                                                        ? "bg-green-100 text-green-700"
+                                                        : item.lead_response === "Not Interested"
+                                                            ? "bg-red-100 text-red-700"
+                                                            : item.lead_response === "Callback Later"
+                                                                ? "bg-yellow-100 text-yellow-700"
+                                                                : "bg-blue-100 text-blue-700"
+                                                    }
+                                `}
+                                            >
+
+                                                {item.lead_response}
+
+                                            </span>
+
+                                        </td>
+
+                                        {/* NOTES */}
+                                        <td className="px-6 py-4 text-sm text-gray-600 leading-relaxed">
+
+                                            {item.notes || "-"}
+
+                                        </td>
+
+                                        {/* NEXT FOLLOW UP */}
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+
+                                            {item.next_follow_up
+                                                ? new Date(item.next_follow_up).toLocaleDateString()
+                                                : "-"}
+
+                                        </td>
+
+                                        {/* CALL STATUS */}
+                                        <td className="px-6 py-4 whitespace-nowrap">
+
+                                            <span
+                                                className={`px-3 py-1 rounded-full text-xs font-semibold
+                                    ${item.call_status === "Connected"
+                                                        ? "bg-blue-100 text-blue-700"
+                                                        : item.call_status === "No Answer"
+                                                            ? "bg-gray-200 text-gray-700"
+                                                            : item.call_status === "Busy"
+                                                                ? "bg-yellow-100 text-yellow-700"
+                                                                : item.call_status === "Wrong Number"
+                                                                    ? "bg-red-100 text-red-700"
+                                                                    : "bg-gray-100 text-gray-700"
+                                                    }
+                                `}
+                                            >
+
+                                                {item.call_status}
+
+                                            </span>
+
+                                        </td>
+
+                                        {/* ACTION */}
+                                        <td className="px-6 py-4 text-right">
+
+                                            <button className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+
+                                                View
+
+                                            </button>
+
+                                        </td>
+
+                                    </tr>
+
+                                ))}
+
+                                {/* INLINE ADD ROW */}
+                                <tr className="bg-blue-50/40 border-t-2 border-blue-100">
+
+                                    {/* DATE */}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">
+
+                                        {new Date().toLocaleDateString()}
+
+                                    </td>
+
+                                    {/* CURRENT STATUS */}
+                                    <td className="px-6 py-4">
+
+                                        <select
+                                            value={followUpForm.lead_response}
+                                            onChange={(e) =>
+                                                setFollowUpForm({
+                                                    ...followUpForm,
+                                                    lead_response: e.target.value,
+                                                })
+                                            }
+                                            className="h-10 w-full rounded-xl border border-gray-200 px-3 outline-none focus:border-blue-500 text-sm bg-white"
+                                        >
+
+                                            <option>Interested</option>
+                                            <option>Not Interested</option>
+                                            <option>Callback Later</option>
+                                            <option>Converted</option>
+
+                                        </select>
+
+                                    </td>
+
+                                    {/* NOTES */}
+                                    <td className="px-6 py-4">
+
+                                        <input
+                                            type="text"
+                                            placeholder="Write notes..."
+                                            value={followUpForm.notes}
+                                            onChange={(e) =>
+                                                setFollowUpForm({
+                                                    ...followUpForm,
+                                                    notes: e.target.value,
+                                                })
+                                            }
+                                            className="h-10 w-full rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500 text-sm bg-white"
+                                        />
+
+                                    </td>
+
+                                    {/* NEXT FOLLOW UP */}
+                                    <td className="px-6 py-4">
+
+                                        <input
+                                            type="date"
+                                            value={followUpForm.next_follow_up}
+                                            onChange={(e) =>
+                                                setFollowUpForm({
+                                                    ...followUpForm,
+                                                    next_follow_up: e.target.value,
+                                                })
+                                            }
+                                            className="h-10 w-full rounded-xl border border-gray-200 px-3 outline-none focus:border-blue-500 text-sm bg-white"
+                                        />
+
+                                    </td>
+
+                                    {/* CALL STATUS */}
+                                    <td className="px-6 py-4">
+
+                                        <select
+                                            value={followUpForm.call_status}
+                                            onChange={(e) =>
+                                                setFollowUpForm({
+                                                    ...followUpForm,
+                                                    call_status: e.target.value,
+                                                })
+                                            }
+                                            className="h-10 w-full rounded-xl border border-gray-200 px-3 outline-none focus:border-blue-500 text-sm bg-white"
+                                        >
+
+                                            <option>Connected</option>
+                                            <option>No Answer</option>
+                                            <option>Busy</option>
+                                            <option>Switched Off</option>
+                                            <option>Wrong Number</option>
+
+                                        </select>
+
+                                    </td>
+
+                                    {/* SAVE */}
+                                    <td className="px-6 py-4 text-right">
+
+                                        <button
+                                            onClick={saveFollowUp}
+                                            disabled={savingFollowUp}
+                                            className="h-10 px-5 rounded-xl bg-black text-white hover:bg-gray-800 transition text-sm font-medium disabled:opacity-50"
+                                        >
+
+                                            {savingFollowUp
+                                                ? "Saving..."
+                                                : "Save"}
+
+                                        </button>
+
+                                    </td>
+
+                                </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
 
             </div>
+
+
+            {/* NOTES */}
+            <div className="mt-5">
+
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">
+                    Notes
+                </label>
+
+
+            </div>
+
+            {/* CONVERT MODAL */}
+            {showConvertModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 mb-6">
+                            <Users size={32} />
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Convert to Patient?</h2>
+                        <p className="text-gray-500 mb-8 leading-relaxed">
+                            This will move <span className="font-bold text-gray-900">{formData.full_name}</span> from leads to the patients list and update their status to "Converted". This action cannot be undone.
+                        </p>
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={() => setShowConvertModal(false)}
+                                className="flex-1 h-12 rounded-xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConvert}
+                                disabled={converting}
+                                className="flex-1 h-12 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {converting ? (
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                ) : "Confirm"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </DashboardLayout>
     );
@@ -643,7 +1097,7 @@ function LeadTags({ leadId }) {
         if (data && data.length === 0) {
             console.warn("DEBUG: tags table is empty or RLS is blocking SELECT.");
         }
-        
+
         if (data) {
             setTags(data);
         }
@@ -861,8 +1315,8 @@ function LeadTags({ leadId }) {
                                                 key={tag.id}
                                                 onClick={() => isSelected ? removeTag(tag.id) : addTag(tag)}
                                                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition group
-                                                    ${isSelected 
-                                                        ? "bg-blue-50 text-blue-700" 
+                                                    ${isSelected
+                                                        ? "bg-blue-50 text-blue-700"
                                                         : "hover:bg-gray-50 text-gray-700"
                                                     }
                                                 `}
@@ -887,7 +1341,7 @@ function LeadTags({ leadId }) {
                             </div>
                         )}
                     </div>
-                    
+
                     {/* Footer Info */}
                     <div className="p-3 bg-gray-50 border-t">
                         <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">
