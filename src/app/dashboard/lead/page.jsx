@@ -9,11 +9,12 @@ import { supabase } from "@/lib/supabase";
 import {
     Search,
     Plus,
-    Settings2,
-    FunnelPlus
+    FunnelPlus,
+    Trash2,
+    MoveRight
 } from "lucide-react";
 
-export default function lead() {
+export default function Lead() {
 
     const router = useRouter();
 
@@ -22,6 +23,8 @@ export default function lead() {
     const [searchTerm, setSearchTerm] = useState("");
 
     const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+
+    const [selectedRows, setSelectedRows] = useState([]);
 
     const dropdownRef = useRef(null);
 
@@ -75,10 +78,10 @@ export default function lead() {
                 return;
             }
 
-            // Flatten lead_tags into a simple tags array
-            const formattedLeads = (data || []).map(lead => ({
+            const formattedLeads = (data || []).map((lead) => ({
                 ...lead,
-                tags: lead.lead_tags?.map(lt => lt.tags).filter(Boolean) || []
+                tags:
+                    lead.lead_tags?.map((lt) => lt.tags).filter(Boolean) || []
             }));
 
             setLeads(formattedLeads);
@@ -103,7 +106,7 @@ export default function lead() {
                 key !== "id" &&
                 key !== "created_at" &&
                 key !== "updated_at" &&
-                key !== "lead_tags" // Exclude the raw junction table data
+                key !== "lead_tags"
         );
 
     }, [leads]);
@@ -120,13 +123,125 @@ export default function lead() {
         });
     }
 
+    function toggleRow(id) {
+
+        setSelectedRows((prev) => {
+
+            if (prev.includes(id)) {
+                return prev.filter((item) => item !== id);
+            }
+
+            return [...prev, id];
+        });
+    }
+
+    function toggleSelectAll() {
+
+        if (selectedRows.length === filteredLeads.length) {
+
+            setSelectedRows([]);
+
+        } else {
+
+            setSelectedRows(filteredLeads.map((lead) => lead.id));
+        }
+    }
+
+    async function handleDeleteSelected() {
+
+        if (selectedRows.length === 0) return;
+
+        const confirmDelete = confirm(
+            `Delete ${selectedRows.length} selected leads?`
+        );
+
+        if (!confirmDelete) return;
+
+        try {
+
+            const { error } = await supabase
+                .from("leads")
+                .delete()
+                .in("id", selectedRows);
+
+            if (error) {
+                console.error(error);
+                return;
+            }
+
+            setLeads((prev) =>
+                prev.filter((lead) => !selectedRows.includes(lead.id))
+            );
+
+            setSelectedRows([]);
+
+        } catch (error) {
+
+            console.error(error);
+        }
+    }
+
+    async function handleMoveToPatient() {
+
+        if (selectedRows.length === 0) return;
+
+        try {
+
+            const selectedLeadData = leads.filter((lead) =>
+                selectedRows.includes(lead.id)
+            );
+
+            const patientData = selectedLeadData.map((lead) => {
+
+                const {
+                    id,
+                    created_at,
+                    updated_at,
+                    lead_tags,
+                    ...rest
+                } = lead;
+
+                return rest;
+            });
+
+            const { error } = await supabase
+                .from("patients")
+                .insert(patientData);
+
+            if (error) {
+                console.error(error);
+                return;
+            }
+
+            await supabase
+                .from("leads")
+                .delete()
+                .in("id", selectedRows);
+
+            setLeads((prev) =>
+                prev.filter((lead) => !selectedRows.includes(lead.id))
+            );
+
+            setSelectedRows([]);
+
+        } catch (error) {
+
+            console.error(error);
+        }
+    }
+
     const filteredLeads = leads.filter((lead) =>
         Object.entries(lead).some(([key, value]) => {
+
             if (key === "tags" && Array.isArray(value)) {
-                return value.some(tag =>
-                    tag.name.toLowerCase().includes(searchTerm.toLowerCase())
+
+                return value.some((tag) =>
+                    tag.name
+                        .toLowerCase()
+                        .includes(searchTerm.toLowerCase())
                 );
             }
+
             return String(value || "")
                 .toLowerCase()
                 .includes(searchTerm.toLowerCase());
@@ -142,28 +257,42 @@ export default function lead() {
 
     function renderCell(column, value) {
 
-        // Tags Badge
+        // Tags
         if (column === "tags") {
+
             return (
                 <div className="flex flex-wrap gap-1">
+
                     {value && value.length > 0 ? (
+
                         value.map((tag) => (
+
                             <span
                                 key={tag.id}
                                 className="px-2 py-0.5 rounded-full text-[10px] font-medium text-white whitespace-nowrap"
-                                style={{ backgroundColor: tag.color || "#3b82f6" }}
+                                style={{
+                                    backgroundColor:
+                                        tag.color || "#3b82f6"
+                                }}
                             >
+
                                 {tag.name}
+
                             </span>
+
                         ))
+
                     ) : (
+
                         <span className="text-gray-400">-</span>
+
                     )}
+
                 </div>
             );
         }
 
-        // Status Badge
+        // Lead Status
         if (column === "lead_status") {
 
             return (
@@ -178,7 +307,9 @@ export default function lead() {
                                     : "bg-gray-100 text-gray-700"
                         }`}
                 >
+
                     {value || "-"}
+
                 </span>
             );
         }
@@ -211,12 +342,14 @@ export default function lead() {
 
                 <Link
                     href="/dashboard/lead/add"
-                    className="h-11 px-3  bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-sm text-white flex items-center gap-2 hover:bg-blue-700 transition"
+                    className="h-11 px-3 bg-gradient-to-br from-[#c084fc] via-[#8b5cf6] to-[#4f46e5] rounded-sm text-white flex items-center gap-2"
                 >
 
                     <Plus size={18} />
 
-                    <p className="text-sm border-l border-blue-800 pl-3">  Add Lead</p>
+                    <p className="text-sm border-l border-blue-800 pl-3">
+                        Add Lead
+                    </p>
 
                 </Link>
 
@@ -227,81 +360,123 @@ export default function lead() {
 
                 <div className="flex items-center justify-between gap-4 flex-wrap">
 
-                    {/* Left Side */}
-                    <div className="flex items-center gap-4 flex-wrap">
+                    {/* Search */}
+                    <div className="relative">
 
-                        {/* Search */}
-                        <div className="relative">
+                        <Search
+                            size={18}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-black"
+                        />
 
-                            <Search
-                                size={18}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-black"
-                            />
-
-                            <input
-                                type="text"
-                                placeholder="Search leads..."
-                                value={searchTerm}
-                                onChange={(e) =>
-                                    setSearchTerm(e.target.value)
-                                }
-                                className="h-11 w-72   text-black text-sm border-b border-gray-200  pl-10 pr-4 outline-none focus:border-blue-500"
-                            />
-
-                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search leads..."
+                            value={searchTerm}
+                            onChange={(e) =>
+                                setSearchTerm(e.target.value)
+                            }
+                            className="h-11 w-72 text-black text-sm border-b border-gray-200 pl-10 pr-4 outline-none focus:border-blue-500"
+                        />
 
                     </div>
 
-                    {/* Column Selector */}
-                    <div className="relative" ref={dropdownRef}>
+                    {/* Right Actions */}
+                    <div
+                        className="flex items-center"
+                        ref={dropdownRef}
+                    >
 
-                        <button
-                            onClick={() =>
-                                setShowColumnDropdown(!showColumnDropdown)
-                            }
-                            className="h-11 w-11 border-l border-gray-300 text-black  flex items-center justify-center "
-                        >
+                        {/* Selected Actions */}
+                        {selectedRows.length > 0 && (
 
-                            <FunnelPlus size={18} />
+                            <div className="flex items-center">
 
-                        </button>
+                                <span className="text-sm text-gray-500 mr-3 whitespace-nowrap">
 
-                        {showColumnDropdown && (
+                                    {selectedRows.length} selected
 
-                            <div className="absolute right-0 top-14 w-72 bg-white border rounded-2xl shadow-lg p-4 z-50">
+                                </span>
 
-                                <p className="text-sm font-semibold text-gray-700 mb-3">
-                                    Select Columns
-                                </p>
+                                {/* Move */}
+                                <button
+                                    onClick={handleMoveToPatient}
+                                    className="h-11 w-11 border-l border-gray-300 text-black flex items-center justify-center hover:bg-gray-100 transition"
+                                >
 
-                                <div className="space-y-2 max-h-80 overflow-y-auto">
+                                    <MoveRight size={18} />
 
-                                    {allColumns.map((column) => (
+                                </button>
 
-                                        <label
-                                            key={column}
-                                            className="flex items-center text-black gap-3 text-sm cursor-pointer"
-                                        >
+                                {/* Delete */}
+                                <button
+                                    onClick={handleDeleteSelected}
+                                    className="h-11 w-11 border-l border-gray-300 text-red-600 flex items-center justify-center hover:bg-red-50 transition"
+                                >
 
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedColumns.includes(column)}
-                                                onChange={() =>
-                                                    toggleColumn(column)
-                                                }
-                                            />
+                                    <Trash2 size={18} />
 
-                                            {formatHeading(column)}
-
-                                        </label>
-
-                                    ))}
-
-                                </div>
+                                </button>
 
                             </div>
 
                         )}
+
+                        {/* Filter */}
+                        <div className="relative">
+
+                            <button
+                                onClick={() =>
+                                    setShowColumnDropdown(
+                                        !showColumnDropdown
+                                    )
+                                }
+                                className="h-11 w-11 border-l border-gray-300 text-black flex items-center justify-center"
+                            >
+
+                                <FunnelPlus size={18} />
+
+                            </button>
+
+                            {showColumnDropdown && (
+
+                                <div className="absolute right-0 top-14 w-72 bg-white border rounded-2xl shadow-lg p-4 z-50">
+
+                                    <p className="text-sm font-semibold text-gray-700 mb-3">
+
+                                        Select Columns
+
+                                    </p>
+
+                                    <div className="space-y-2 max-h-80 overflow-y-auto">
+
+                                        {allColumns.map((column) => (
+
+                                            <label
+                                                key={column}
+                                                className="flex items-center text-black gap-3 text-sm cursor-pointer"
+                                            >
+
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedColumns.includes(column)}
+                                                    onChange={() =>
+                                                        toggleColumn(column)
+                                                    }
+                                                />
+
+                                                {formatHeading(column)}
+
+                                            </label>
+
+                                        ))}
+
+                                    </div>
+
+                                </div>
+
+                            )}
+
+                        </div>
 
                     </div>
 
@@ -319,6 +494,21 @@ export default function lead() {
                         <thead className="bg-gray-50 border-b">
 
                             <tr>
+
+                                {/* Select All */}
+                                <th className="p-4 w-12">
+
+                                    <input
+                                        type="checkbox"
+                                        checked={
+                                            filteredLeads.length > 0 &&
+                                            selectedRows.length ===
+                                            filteredLeads.length
+                                        }
+                                        onChange={toggleSelectAll}
+                                    />
+
+                                </th>
 
                                 {selectedColumns.map((column) => (
 
@@ -342,23 +532,31 @@ export default function lead() {
                             {loading ? (
 
                                 <tr>
+
                                     <td
-                                        colSpan={selectedColumns.length}
+                                        colSpan={selectedColumns.length + 1}
                                         className="p-10 text-center text-gray-500"
                                     >
+
                                         Loading leads...
+
                                     </td>
+
                                 </tr>
 
                             ) : filteredLeads.length === 0 ? (
 
                                 <tr>
+
                                     <td
-                                        colSpan={selectedColumns.length}
+                                        colSpan={selectedColumns.length + 1}
                                         className="p-10 text-center text-gray-500"
                                     >
+
                                         No leads found.
+
                                     </td>
+
                                 </tr>
 
                             ) : (
@@ -368,11 +566,32 @@ export default function lead() {
                                     <tr
                                         key={lead.id}
                                         onClick={() =>
-                                            router.push(`/dashboard/lead/edit/${lead.id}`)
+                                            router.push(
+                                                `/dashboard/lead/edit/${lead.id}`
+                                            )
                                         }
                                         className="hover:bg-gray-50 transition cursor-pointer"
                                     >
 
+                                        {/* Row Checkbox */}
+                                        <td
+                                            className="p-4"
+                                            onClick={(e) =>
+                                                e.stopPropagation()
+                                            }
+                                        >
+
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedRows.includes(lead.id)}
+                                                onChange={() =>
+                                                    toggleRow(lead.id)
+                                                }
+                                            />
+
+                                        </td>
+
+                                        {/* Data */}
                                         {selectedColumns.map((column) => (
 
                                             <td
