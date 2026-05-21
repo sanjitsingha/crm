@@ -1,6 +1,12 @@
 'use client'
 
-import { LayoutDashboard, Users, User } from "lucide-react";
+import {
+    LayoutDashboard,
+    Users,
+    User,
+    Settings
+} from "lucide-react";
+
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
@@ -9,47 +15,71 @@ export default function Sidebar() {
     const pathname = usePathname();
 
     return (
-        <aside className="w-20 bg-white border-r flex flex-col items-center py-6">
+        <aside className="w-20 bg-white border-r flex flex-col items-center py-6 h-screen">
 
-            {/* Logo */}
-            <div className="mb-10">
-                <div className="h-12 w-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white text-xl font-bold">
-                    K
+            {/* Top Section */}
+            <div className="flex flex-col items-center">
+
+                {/* Logo */}
+                <div className="mb-10">
+                    <div className="h-12 w-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white text-xl font-bold">
+                        K
+                    </div>
                 </div>
+
+                {/* Nav */}
+                <nav className="flex flex-col items-center gap-4">
+
+                    <Link
+                        href="/dashboard"
+                        className={`h-12 w-12 rounded-xl flex items-center justify-center transition flex-col ${pathname === "/dashboard"
+                            ? "text-blue-600"
+                            : "text-gray-400"
+                            }`}
+                    >
+                        <LayoutDashboard size={24} />
+                        <p className="text-xs mt-1">Dashboard</p>
+                    </Link>
+
+                    <Link
+                        href="/dashboard/lead"
+                        className={`h-12 w-12 rounded-xl flex items-center justify-center transition flex-col ${pathname.startsWith("/dashboard/lead")
+                            ? "text-blue-600"
+                            : "text-gray-400"
+                            }`}
+                    >
+                        <Users size={24} />
+                        <p className="text-xs mt-1">Leads</p>
+                    </Link>
+
+                    <Link
+                        href="/dashboard/patient"
+                        className={`h-12 w-12 rounded-xl flex items-center justify-center transition flex-col ${pathname.startsWith("/dashboard/patient")
+                            ? "text-blue-600"
+                            : "text-gray-400"
+                            }`}
+                    >
+                        <User size={24} />
+                        <p className="text-xs mt-1">Patients</p>
+                    </Link>
+
+                </nav>
             </div>
 
-            {/* Nav */}
-            <nav className="flex flex-col items-center gap-4">
-
-                <Link href="/dashboard" className={`h-12 w-12 rounded-xl flex items-center justify-center transition flex-col ${pathname === "/dashboard"
-                    ? "text-blue-600" : "text-gray-400 "
-                    }`}>
-
-                    <LayoutDashboard size={24} />
-                    <p className="text-xs mt-1"> Dashboard</p>
-
+            {/* Bottom Settings */}
+            <div className="mt-auto">
+                <Link
+                    href="/dashboard/settings"
+                    className={`h-12 w-12 rounded-xl flex items-center justify-center transition flex-col ${pathname.startsWith("/dashboard/settings")
+                        ? "text-blue-600"
+                        : "text-gray-400"
+                        }`}
+                >
+                    <Settings size={24} />
+                    <p className="text-xs mt-1">Settings</p>
                 </Link>
+            </div>
 
-
-                <Link href="/dashboard/lead" className={`h-12 w-12 rounded-xl flex items-center justify-center transition flex-col ${pathname.startsWith("/dashboard/lead")
-                    ? "text-blue-600" : "text-gray-400 "
-                    }`}>
-
-                    <Users size={24} />
-                    <p className="text-xs mt-1"> Leads</p>
-
-                </Link>
-
-                <Link href="/dashboard/patient" className={`h-12 w-12 rounded-xl flex items-center justify-center transition flex-col ${pathname.startsWith("/dashboard/patient")
-                    ? "text-blue-600" : "text-gray-400 "
-                    }`}>
-
-                    <User size={24} />
-                    <p className="text-xs mt-1"> Patients</p>
-
-                </Link>
-
-            </nav>
         </aside>
     );
 }
