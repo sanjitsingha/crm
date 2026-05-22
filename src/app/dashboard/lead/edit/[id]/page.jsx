@@ -263,7 +263,7 @@ export default function EditLeadPage() {
   return (
     <DashboardLayout>
       {/* TOP HEADER */}
-      <div className="bg-white rounded-3xl border border-gray-200 p-6 mb-6">
+      <div className="bg-white rounded border border-gray-200 p-6 mb-6">
         <div className="flex items-start justify-between">
           <div>
             <Link
@@ -337,7 +337,7 @@ export default function EditLeadPage() {
       {/* MAIN CONTENT */}
       <div className="space-y-6">
         {/* BASIC INFO */}
-        <Section title="Basic Information">
+        <Section   title="Basic Information">
           <EditableField
             label="Full Name"
             name="full_name"
@@ -488,7 +488,7 @@ export default function EditLeadPage() {
         </Section>
 
         {/* NOTES */}
-        <div className="bg-white rounded-3xl border border-gray-200 shadow-sm">
+        <div className="bg-white  border border-gray-200 shadow-sm">
           <div className="p-6 border-b">
             <h2 className="text-lg font-semibold text-black">Notes</h2>
           </div>
@@ -499,14 +499,13 @@ export default function EditLeadPage() {
               name="notes"
               value={formData.notes || ""}
               onChange={handleChange}
-              className="w-full rounded-2xl border border-gray-200 p-4 outline-none focus:border-blue-500 text-black"
+              className="w-full  border border-gray-200 p-4 outline-none focus:border-blue-500 text-black"
               placeholder="Write notes..."
             />
           </div>
         </div>
         {/* FOLLOW UP CALLS */}
-        {/* FOLLOW UP CALLS */}
-        <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white  border border-gray-200 shadow-sm overflow-hidden">
           {/* HEADER */}
           <div className="p-6 border-b flex items-center justify-between">
             <div>
@@ -648,7 +647,7 @@ export default function EditLeadPage() {
                           lead_response: e.target.value,
                         })
                       }
-                      className="h-10 w-full rounded-xl border border-gray-200 px-3 outline-none focus:border-blue-500 text-sm bg-white"
+                      className="h-10 w-full text-black border border-gray-200 px-3 outline-none focus:border-blue-500 text-sm bg-white"
                     >
                       <option>Interested</option>
                       <option>Not Interested</option>
@@ -659,7 +658,7 @@ export default function EditLeadPage() {
 
                   {/* NOTES */}
                   <td className="px-6 py-4">
-                    <input
+                    <textarea
                       type="text"
                       placeholder="Write notes..."
                       value={followUpForm.notes}
@@ -669,7 +668,7 @@ export default function EditLeadPage() {
                           notes: e.target.value,
                         })
                       }
-                      className="h-10 w-full rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500 text-sm bg-white"
+                      className="h-10 w-full p-2 border text-black border-gray-200 px-4 outline-none focus:border-blue-500 text-sm bg-white"
                     />
                   </td>
 
@@ -684,7 +683,7 @@ export default function EditLeadPage() {
                           next_follow_up: e.target.value,
                         })
                       }
-                      className="h-10 w-full rounded-xl border border-gray-200 px-3 outline-none focus:border-blue-500 text-sm bg-white"
+                      className="h-10 w-full text-black border border-gray-200 px-3 outline-none focus:border-blue-500 text-sm bg-white"
                     />
                   </td>
 
@@ -698,7 +697,7 @@ export default function EditLeadPage() {
                           call_status: e.target.value,
                         })
                       }
-                      className="h-10 w-full rounded-xl border border-gray-200 px-3 outline-none focus:border-blue-500 text-sm bg-white"
+                      className="h-10 w-full text-black border border-gray-200 px-3 outline-none focus:border-blue-500 text-sm bg-white"
                     >
                       <option>Connected</option>
                       <option>No Answer</option>
@@ -725,12 +724,7 @@ export default function EditLeadPage() {
         </div>
       </div>
 
-      {/* NOTES */}
-      <div className="mt-5">
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">
-          Notes
-        </label>
-      </div>
+     
 
       {/* CONVERT MODAL */}
       {showConvertModal && (
@@ -779,12 +773,12 @@ export default function EditLeadPage() {
 /* SECTION */
 function Section({ title, children }) {
   return (
-    <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+    <div className="bg-white  border border-gray-200 shadow-xs overflow-hidden">
       <div className="p-6 border-b">
         <h2 className="text-lg font-semibold text-black">{title}</h2>
       </div>
 
-      <div className="p-6 grid grid-cols-2 gap-6">{children}</div>
+      <div className="p-6 grid grid-cols-2 gap-3">{children}</div>
     </div>
   );
 }
@@ -860,9 +854,7 @@ function LeadTags({ leadId }) {
 
   const [showDropdown, setShowDropdown] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [newTagName, setNewTagName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     if (leadId) {
@@ -950,46 +942,6 @@ function LeadTags({ leadId }) {
     }
   }
 
-  async function createAndAddTag() {
-    if (!newTagName.trim()) return;
-
-    try {
-      setIsCreating(true);
-
-      // 1. Create the tag
-      const { data: tagData, error: tagError } = await supabase
-        .from("tags")
-        .insert({
-          name: newTagName.trim(),
-          color: "#3b82f6", // Default blue
-        })
-        .select()
-        .single();
-
-      if (tagError) throw tagError;
-
-      // 2. Refresh all tags list
-      setTags([...tags, tagData]);
-
-      // 3. Add tag to lead
-      const { error: linkError } = await supabase.from("lead_tags").insert({
-        lead_id: leadId,
-        tag_id: tagData.id,
-      });
-
-      if (linkError) throw linkError;
-
-      // 4. Update selected tags
-      setSelectedTags([...selectedTags, tagData]);
-      setNewTagName("");
-    } catch (error) {
-      console.error("Error creating tag:", error);
-      alert("Error creating tag: " + error.message);
-    } finally {
-      setIsCreating(false);
-    }
-  }
-
   return (
     <div className="relative">
       <div className="flex items-center gap-2 flex-wrap">
@@ -1022,7 +974,7 @@ function LeadTags({ leadId }) {
       </div>
 
       {showDropdown && (
-        <div className="absolute z-50 mt-3 w-72 bg-white border border-gray-200 rounded-2xl shadow-2xl p-0 overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="absolute z-50 mt-3 w-72 bg-white border border-gray-200  shadow-2xl p-0 overflow-hidden animate-in fade-in zoom-in duration-200">
           {/* Search & Create Header */}
           <div className="p-3 border-b bg-gray-50/50">
             <div className="flex gap-2">
@@ -1033,28 +985,12 @@ function LeadTags({ leadId }) {
                 />
                 <input
                   type="text"
-                  placeholder="Search or create tag..."
+                  placeholder="Search tags..."
                   value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setNewTagName(e.target.value);
-                  }}
-                  className="w-full text-sm border border-gray-200 rounded-xl pl-8 pr-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full text-sm border border-gray-200 text-black pl-8 pr-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
                 />
               </div>
-              {searchTerm &&
-                !tags.find(
-                  (t) => t.name.toLowerCase() === searchTerm.toLowerCase(),
-                ) && (
-                  <button
-                    onClick={createAndAddTag}
-                    disabled={isCreating}
-                    className="px-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-1"
-                  >
-                    <Plus size={16} />
-                    <span className="text-xs font-medium">Create</span>
-                  </button>
-                )}
             </div>
           </div>
 
@@ -1073,10 +1009,10 @@ function LeadTags({ leadId }) {
                   <TagIcon size={20} className="text-gray-400" />
                 </div>
                 <p className="text-sm text-gray-900 font-semibold mb-1">
-                  No tags found
+                  No tags available
                 </p>
                 <p className="text-xs text-gray-500 px-4">
-                  Create your first tag by typing above.
+                  Add tags in the Tags management section.
                 </p>
               </div>
             ) : (
