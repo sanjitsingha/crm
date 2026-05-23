@@ -324,6 +324,8 @@ export default function Lead() {
     return (
 
         <DashboardLayout>
+<div className="p-4">
+
 
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
@@ -621,7 +623,7 @@ export default function Lead() {
                 </div>
 
             </div>
-
+</div>
         </DashboardLayout>
     );
 }
